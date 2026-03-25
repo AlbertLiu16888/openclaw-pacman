@@ -15,7 +15,7 @@ const CONFIG = {
         return parseInt(localStorage.getItem('pac_threshold')) || 3000;
     },
     get apiUrl() {
-        return localStorage.getItem('pac_api_url') || 'https://script.google.com/macros/s/AKfycbwHvZvRb3ivgQJWKL6jHlwVfohgKvo9g9j_yLn-kwe7yFeacwyNw3PcVpvyzQMfkl2s/exec';
+        return localStorage.getItem('pac_api_url') || 'https://script.google.com/macros/s/AKfycbwAhuS5A02qLzdvUIzgCabG0FhTJdxlLpQBmAcJzIOgO3GvzMBEzilIzeblsPCnzi-m/exec';
     },
     get logoUrl() {
         return localStorage.getItem('pac_logo_url') || '';
