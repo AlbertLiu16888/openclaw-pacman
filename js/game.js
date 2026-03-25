@@ -96,10 +96,12 @@ class PacManGame {
             g.speed = CONFIG.ghostSpeed + (this.level - 1) * (CONFIG.levelSpeedBonus * 0.5);
             g.color = ghostColors[i];
             g.name = ghostNames[i];
+            g.index = i;
             g.scared = false;
             g.eaten = false;
-            g.inHouse = true;
-            g.exitDelay = i * 2000; // stagger exits
+            g.inHouse = true;       // still inside ghost house
+            g.exiting = false;      // moving through door toward exit point
+            g.exitDelay = i * 2500; // stagger exits
             g.exitTimer = 0;
             g.dir = { r: -1, c: 0 };
             return g;
@@ -283,57 +285,80 @@ class PacManGame {
 
     _updateGhosts(dt) {
         for (const ghost of this.ghosts) {
-            // Handle exit from ghost house
+            // === Phase 1: Inside ghost house, waiting to exit ===
             if (ghost.inHouse) {
                 ghost.exitTimer += dt * 1000;
                 if (ghost.exitTimer >= ghost.exitDelay) {
-                    // Move toward exit
-                    const target = GHOST_EXIT;
+                    // Move toward door using direct vector (ignores walls)
+                    const target = GHOST_DOOR;
                     const dy = target.row - ghost.y;
                     const dx = target.col - ghost.x;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.5) {
+                    if (dist < 0.3) {
+                        // Reached door, switch to exiting phase
                         ghost.inHouse = false;
-                        ghost.y = target.row;
+                        ghost.exiting = true;
                         ghost.x = target.col;
-                        ghost.snapToTile();
+                        ghost.y = target.row;
                         ghost.dir = { r: -1, c: 0 };
                     } else {
-                        ghost.y += (dy / dist) * CONFIG.ghostSpeed * dt;
-                        ghost.x += (dx / dist) * CONFIG.ghostSpeed * dt;
+                        const spd = CONFIG.ghostSpeed * 1.5;
+                        ghost.y += (dy / dist) * spd * dt;
+                        ghost.x += (dx / dist) * spd * dt;
                     }
                 }
                 continue;
             }
 
-            // Eaten ghost returning to house (two-phase: go to door, then go inside)
-            if (ghost.eaten) {
-                const doorTarget = GHOST_DOOR;
-                const dx = doorTarget.col - ghost.x;
-                const dy = doorTarget.row - ghost.y;
+            // === Phase 2: Exiting - move straight up through door to exit point ===
+            if (ghost.exiting) {
+                const target = GHOST_EXIT;
+                const dy = target.row - ghost.y;
+                const dx = target.col - ghost.x;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                const spd = CONFIG.ghostSpeed * 2.5;
+                if (dist < 0.3) {
+                    // Fully exited! Switch to normal AI movement
+                    ghost.exiting = false;
+                    ghost.x = target.col;
+                    ghost.y = target.row;
+                    ghost.snapToTile();
+                    // Set initial direction: go left or right (not down toward house)
+                    ghost.dir = ghost.index % 2 === 0 ? { r: 0, c: -1 } : { r: 0, c: 1 };
+                } else {
+                    const spd = CONFIG.ghostSpeed * 1.5;
+                    ghost.y += (dy / dist) * spd * dt;
+                    ghost.x += (dx / dist) * spd * dt;
+                }
+                continue;
+            }
 
+            // === Phase: Eaten ghost returning to house ===
+            if (ghost.eaten) {
+                const target = GHOST_DOOR;
+                const dx = target.col - ghost.x;
+                const dy = target.row - ghost.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 0.5) {
-                    // Reached the door, teleport inside and reset
                     ghost.eaten = false;
                     ghost.scared = false;
                     ghost.inHouse = true;
+                    ghost.exiting = false;
                     ghost.exitDelay = 1500;
                     ghost.exitTimer = 0;
-                    ghost.x = GHOST_STARTS[0].col;
-                    ghost.y = GHOST_STARTS[0].row;
+                    ghost.x = GHOST_STARTS[ghost.index].col;
+                    ghost.y = GHOST_STARTS[ghost.index].row;
                 } else {
+                    const spd = CONFIG.ghostSpeed * 3;
                     ghost.x += (dx / dist) * spd * dt;
                     ghost.y += (dy / dist) * spd * dt;
                 }
                 continue;
             }
 
+            // === Phase 3: Normal AI movement ===
             const speed = ghost.scared ? CONFIG.ghostScaredSpeed :
                           (CONFIG.ghostSpeed + (this.level - 1) * CONFIG.levelSpeedBonus * 0.5);
 
-            // At tile center, choose direction
             if (ghost.atTileCenter(0.08)) {
                 ghost.snapToTile();
                 const tile = ghost.getTile();
@@ -342,57 +367,54 @@ class PacManGame {
                     { r: 0, c: -1 }, { r: 0, c: 1 }
                 ];
 
-                // No reversing (except when scared and just turned)
                 const reverse = { r: -ghost.dir.r, c: -ghost.dir.c };
                 const possible = dirs.filter(d => {
                     const nr = tile.row + d.r;
                     const nc = tile.col + d.c;
-                    // Don't go back
                     if (d.r === reverse.r && d.c === reverse.c) return false;
                     return this.map.canGhostPass(nr, nc);
                 });
 
                 if (possible.length === 0) {
-                    // Dead end, reverse
                     ghost.dir = reverse;
                 } else if (ghost.scared) {
-                    // Random direction when scared
                     ghost.dir = possible[Math.floor(Math.random() * possible.length)];
                 } else {
-                    // Chase Pac-Man (simple: move toward pac-man)
                     let target;
                     const pac = this.pacman.getTile();
 
                     switch (ghost.name) {
                         case 'Blinky':
-                            // Direct chase
                             target = pac;
                             break;
                         case 'Pinky':
-                            // Aim 4 tiles ahead of pac-man
                             target = {
                                 row: pac.row + this.pacman.dir.r * 4,
                                 col: pac.col + this.pacman.dir.c * 4
                             };
                             break;
-                        case 'Inky':
-                            // Unpredictable - sometimes chase, sometimes scatter
-                            if (Math.random() < 0.7) {
-                                target = pac;
-                            } else {
-                                target = { row: this.map.rows - 1, col: this.map.cols - 1 };
-                            }
+                        case 'Inky': {
+                            // Vector from Blinky to 2 tiles ahead of Pac-Man, doubled
+                            const blinky = this.ghosts[0];
+                            const ahead = {
+                                row: pac.row + this.pacman.dir.r * 2,
+                                col: pac.col + this.pacman.dir.c * 2
+                            };
+                            target = {
+                                row: ahead.row + (ahead.row - blinky.getTile().row),
+                                col: ahead.col + (ahead.col - blinky.getTile().col)
+                            };
                             break;
-                        case 'Clyde':
-                            // Chase when far, scatter when close
-                            const dist = Math.abs(pac.row - tile.row) + Math.abs(pac.col - tile.col);
-                            target = dist > 8 ? pac : { row: this.map.rows - 1, col: 0 };
+                        }
+                        case 'Clyde': {
+                            const d = Math.abs(pac.row - tile.row) + Math.abs(pac.col - tile.col);
+                            target = d > 8 ? pac : GHOST_SCATTER[ghost.index];
                             break;
+                        }
                         default:
                             target = pac;
                     }
 
-                    // Pick direction closest to target
                     let bestDir = possible[0];
                     let bestDist = Infinity;
                     for (const d of possible) {
@@ -421,7 +443,7 @@ class PacManGame {
     _checkCollisions() {
         const pac = this.pacman;
         for (const ghost of this.ghosts) {
-            if (ghost.inHouse || ghost.eaten) continue;
+            if (ghost.inHouse || ghost.eaten || ghost.exiting) continue;
             const dx = pac.x - ghost.x;
             const dy = pac.y - ghost.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -476,6 +498,7 @@ class PacManGame {
                 g.scared = false;
                 g.eaten = false;
                 g.inHouse = true;
+                g.exiting = false;
                 g.exitTimer = 0;
             });
 
