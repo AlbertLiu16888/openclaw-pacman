@@ -101,7 +101,8 @@ class PacManGame {
             g.eaten = false;
             g.respawning = false;
             g.respawnTimer = 0;
-            g.dir = GHOST_INIT_DIRS[i];  // start moving inward
+            g.dir = GHOST_INIT_DIRS[i];
+            g.lastDecisionTile = null;  // prevent re-evaluating same tile
             return g;
         });
     }
@@ -321,80 +322,114 @@ class PacManGame {
             const speed = ghost.scared ? CONFIG.ghostScaredSpeed :
                           (CONFIG.ghostSpeed + (this.level - 1) * CONFIG.levelSpeedBonus * 0.5);
 
-            if (ghost.atTileCenter(0.08)) {
-                ghost.snapToTile();
+            // Direction decision at tile centers (with dedup to prevent snap-back loop)
+            if (ghost.atTileCenter(0.15)) {
                 const tile = ghost.getTile();
-                const dirs = [
-                    { r: -1, c: 0 }, { r: 1, c: 0 },
-                    { r: 0, c: -1 }, { r: 0, c: 1 }
-                ];
+                const tileKey = tile.row * 100 + tile.col;
 
-                const reverse = { r: -ghost.dir.r, c: -ghost.dir.c };
-                const possible = dirs.filter(d => {
-                    const nr = tile.row + d.r;
-                    const nc = tile.col + d.c;
-                    if (d.r === reverse.r && d.c === reverse.c) return false;
-                    return this.map.canGhostPass(nr, nc);
-                });
+                // Only decide once per tile visit
+                if (ghost.lastDecisionTile !== tileKey) {
+                    ghost.lastDecisionTile = tileKey;
+                    ghost.snapToTile();
 
-                if (possible.length === 0) {
-                    ghost.dir = reverse;
-                } else if (ghost.scared) {
-                    ghost.dir = possible[Math.floor(Math.random() * possible.length)];
-                } else {
-                    let target;
-                    const pac = this.pacman.getTile();
+                    const dirs = [
+                        { r: -1, c: 0 }, { r: 1, c: 0 },
+                        { r: 0, c: -1 }, { r: 0, c: 1 }
+                    ];
 
-                    switch (ghost.name) {
-                        case 'Blinky':
-                            target = pac;
-                            break;
-                        case 'Pinky':
-                            target = {
-                                row: pac.row + this.pacman.dir.r * 4,
-                                col: pac.col + this.pacman.dir.c * 4
-                            };
-                            break;
-                        case 'Inky': {
-                            // Vector from Blinky to 2 tiles ahead of Pac-Man, doubled
-                            const blinky = this.ghosts[0];
-                            const ahead = {
-                                row: pac.row + this.pacman.dir.r * 2,
-                                col: pac.col + this.pacman.dir.c * 2
-                            };
-                            target = {
-                                row: ahead.row + (ahead.row - blinky.getTile().row),
-                                col: ahead.col + (ahead.col - blinky.getTile().col)
-                            };
-                            break;
-                        }
-                        case 'Clyde': {
-                            const d = Math.abs(pac.row - tile.row) + Math.abs(pac.col - tile.col);
-                            target = d > 8 ? pac : GHOST_SCATTER[ghost.index];
-                            break;
-                        }
-                        default:
-                            target = pac;
-                    }
-
-                    let bestDir = possible[0];
-                    let bestDist = Infinity;
-                    for (const d of possible) {
+                    const reverse = { r: -ghost.dir.r, c: -ghost.dir.c };
+                    const possible = dirs.filter(d => {
                         const nr = tile.row + d.r;
                         const nc = tile.col + d.c;
-                        const dist = Math.pow(target.row - nr, 2) + Math.pow(target.col - nc, 2);
-                        if (dist < bestDist) {
-                            bestDist = dist;
-                            bestDir = d;
+                        if (d.r === reverse.r && d.c === reverse.c) return false;
+                        return this.map.canGhostPass(nr, nc);
+                    });
+
+                    if (possible.length === 0) {
+                        ghost.dir = reverse;
+                    } else if (ghost.scared) {
+                        ghost.dir = possible[Math.floor(Math.random() * possible.length)];
+                    } else {
+                        let target;
+                        const pac = this.pacman.getTile();
+
+                        switch (ghost.name) {
+                            case 'Blinky':
+                                // Direct chase
+                                target = pac;
+                                break;
+                            case 'Pinky':
+                                // Aim 4 tiles ahead of Pac-Man
+                                target = {
+                                    row: pac.row + this.pacman.dir.r * 4,
+                                    col: pac.col + this.pacman.dir.c * 4
+                                };
+                                break;
+                            case 'Inky': {
+                                const blinky = this.ghosts[0];
+                                const ahead = {
+                                    row: pac.row + this.pacman.dir.r * 2,
+                                    col: pac.col + this.pacman.dir.c * 2
+                                };
+                                target = {
+                                    row: ahead.row + (ahead.row - blinky.getTile().row),
+                                    col: ahead.col + (ahead.col - blinky.getTile().col)
+                                };
+                                break;
+                            }
+                            case 'Clyde': {
+                                const d = Math.abs(pac.row - tile.row) + Math.abs(pac.col - tile.col);
+                                target = d > 8 ? pac : GHOST_SCATTER[ghost.index];
+                                break;
+                            }
+                            default:
+                                target = pac;
                         }
+
+                        let bestDir = possible[0];
+                        let bestDist = Infinity;
+                        for (const d of possible) {
+                            const nr = tile.row + d.r;
+                            const nc = tile.col + d.c;
+                            const dist = Math.pow(target.row - nr, 2) + Math.pow(target.col - nc, 2);
+                            if (dist < bestDist) {
+                                bestDist = dist;
+                                bestDir = d;
+                            }
+                        }
+                        ghost.dir = bestDir;
                     }
-                    ghost.dir = bestDir;
                 }
+            } else {
+                // Moved away from tile center — clear decision lock
+                ghost.lastDecisionTile = null;
             }
 
             // Move ghost
             ghost.x += ghost.dir.c * speed * dt;
             ghost.y += ghost.dir.r * speed * dt;
+
+            // Wall collision safety: if ghost somehow enters a wall, snap back
+            const nextR = Math.round(ghost.y + ghost.dir.r * 0.5);
+            const nextC = Math.round(ghost.x + ghost.dir.c * 0.5);
+            if (!this.map.canGhostPass(nextR, nextC)) {
+                if (ghost.atTileCenter(0.2)) {
+                    ghost.snapToTile();
+                    // Force find any valid direction
+                    const tile = ghost.getTile();
+                    const allDirs = [
+                        { r: -1, c: 0 }, { r: 1, c: 0 },
+                        { r: 0, c: -1 }, { r: 0, c: 1 }
+                    ];
+                    const valid = allDirs.filter(d =>
+                        this.map.canGhostPass(tile.row + d.r, tile.col + d.c)
+                    );
+                    if (valid.length > 0) {
+                        ghost.dir = valid[Math.floor(Math.random() * valid.length)];
+                        ghost.lastDecisionTile = null; // allow re-decide
+                    }
+                }
+            }
 
             // Tunnel wrap
             if (ghost.x < -0.5) ghost.x = this.map.cols - 0.5;
@@ -461,6 +496,7 @@ class PacManGame {
                 g.eaten = false;
                 g.respawning = false;
                 g.respawnTimer = 0;
+                g.lastDecisionTile = null;
             });
 
             this.powerMode = false;
