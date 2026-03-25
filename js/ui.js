@@ -218,6 +218,8 @@
 
     // Keyboard
     document.addEventListener('keydown', e => {
+        // 在輸入框中不攔截鍵盤（允許正常打字）
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         switch (e.key) {
             case 'ArrowUp':
             case 'w':
