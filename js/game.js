@@ -99,11 +99,9 @@ class PacManGame {
             g.index = i;
             g.scared = false;
             g.eaten = false;
-            g.inHouse = true;       // still inside ghost house
-            g.exiting = false;      // moving through door toward exit point
-            g.exitDelay = i * 2500; // stagger exits
-            g.exitTimer = 0;
-            g.dir = { r: -1, c: 0 };
+            g.respawning = false;
+            g.respawnTimer = 0;
+            g.dir = GHOST_INIT_DIRS[i];  // start moving inward
             return g;
         });
     }
@@ -187,7 +185,7 @@ class PacManGame {
             const tile = pac.getTile();
             const nr = tile.row + pac.nextDir.r;
             const nc = tile.col + pac.nextDir.c;
-            if (!map.isWall(nr, nc) && !map.isGhostHouse(nr, nc)) {
+            if (!map.isWall(nr, nc)) {
                 pac.dir = { ...pac.nextDir };
                 pac.snapToTile();
             }
@@ -202,7 +200,7 @@ class PacManGame {
         const nextTileR = Math.round(newY + pac.dir.r * 0.5);
         const nextTileC = Math.round(newX + pac.dir.c * 0.5);
 
-        if (map.isWall(nextTileR, nextTileC) || map.isGhostHouse(nextTileR, nextTileC)) {
+        if (map.isWall(nextTileR, nextTileC)) {
             // If approaching wall and near center, stop
             if (pac.atTileCenter(0.15)) {
                 pac.snapToTile();
@@ -262,7 +260,7 @@ class PacManGame {
         this.powerTimer = CONFIG.powerDuration / 1000;
         this.ghostEatCombo = 0;
         this.ghosts.forEach(g => {
-            if (!g.eaten && !g.inHouse) g.scared = true;
+            if (!g.eaten && !g.respawning) g.scared = true;
         });
     }
 
@@ -285,68 +283,32 @@ class PacManGame {
 
     _updateGhosts(dt) {
         for (const ghost of this.ghosts) {
-            // === Phase 1: Inside ghost house, waiting to exit ===
-            if (ghost.inHouse) {
-                ghost.exitTimer += dt * 1000;
-                if (ghost.exitTimer >= ghost.exitDelay) {
-                    // Move toward door using direct vector (ignores walls)
-                    const target = GHOST_DOOR;
-                    const dy = target.row - ghost.y;
-                    const dx = target.col - ghost.x;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.3) {
-                        // Reached door, switch to exiting phase
-                        ghost.inHouse = false;
-                        ghost.exiting = true;
-                        ghost.x = target.col;
-                        ghost.y = target.row;
-                        ghost.dir = { r: -1, c: 0 };
-                    } else {
-                        const spd = CONFIG.ghostSpeed * 1.5;
-                        ghost.y += (dy / dist) * spd * dt;
-                        ghost.x += (dx / dist) * spd * dt;
-                    }
-                }
-                continue;
-            }
-
-            // === Phase 2: Exiting - move straight up through door to exit point ===
-            if (ghost.exiting) {
-                const target = GHOST_EXIT;
-                const dy = target.row - ghost.y;
-                const dx = target.col - ghost.x;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 0.3) {
-                    // Fully exited! Switch to normal AI movement
-                    ghost.exiting = false;
-                    ghost.x = target.col;
-                    ghost.y = target.row;
-                    ghost.snapToTile();
-                    // Set initial direction: go left or right (not down toward house)
-                    ghost.dir = ghost.index % 2 === 0 ? { r: 0, c: -1 } : { r: 0, c: 1 };
-                } else {
-                    const spd = CONFIG.ghostSpeed * 1.5;
-                    ghost.y += (dy / dist) * spd * dt;
-                    ghost.x += (dx / dist) * spd * dt;
-                }
-                continue;
-            }
-
-            // === Phase: Eaten ghost returning to house ===
-            if (ghost.eaten) {
-                const target = GHOST_DOOR;
-                const dx = target.col - ghost.x;
-                const dy = target.row - ghost.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 0.5) {
+            // === Respawning at corner (after being eaten) ===
+            if (ghost.respawning) {
+                ghost.respawnTimer -= dt;
+                if (ghost.respawnTimer <= 0) {
+                    ghost.respawning = false;
                     ghost.eaten = false;
                     ghost.scared = false;
-                    ghost.inHouse = true;
-                    ghost.exiting = false;
-                    ghost.exitDelay = 1500;
-                    ghost.exitTimer = 0;
                     ghost.x = GHOST_STARTS[ghost.index].col;
                     ghost.y = GHOST_STARTS[ghost.index].row;
+                    ghost.snapToTile();
+                    ghost.dir = GHOST_INIT_DIRS[ghost.index];
+                }
+                continue;
+            }
+
+            // === Eaten: show eyes flying back to corner, then respawn ===
+            if (ghost.eaten) {
+                const home = GHOST_STARTS[ghost.index];
+                const dx = home.col - ghost.x;
+                const dy = home.row - ghost.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 0.5) {
+                    ghost.respawning = true;
+                    ghost.respawnTimer = 1.5; // 1.5s cooldown at corner
+                    ghost.x = home.col;
+                    ghost.y = home.row;
                 } else {
                     const spd = CONFIG.ghostSpeed * 3;
                     ghost.x += (dx / dist) * spd * dt;
@@ -355,7 +317,7 @@ class PacManGame {
                 continue;
             }
 
-            // === Phase 3: Normal AI movement ===
+            // === Normal AI movement ===
             const speed = ghost.scared ? CONFIG.ghostScaredSpeed :
                           (CONFIG.ghostSpeed + (this.level - 1) * CONFIG.levelSpeedBonus * 0.5);
 
@@ -443,7 +405,7 @@ class PacManGame {
     _checkCollisions() {
         const pac = this.pacman;
         for (const ghost of this.ghosts) {
-            if (ghost.inHouse || ghost.eaten || ghost.exiting) continue;
+            if (ghost.eaten || ghost.respawning) continue;
             const dx = pac.x - ghost.x;
             const dy = pac.y - ghost.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -494,12 +456,11 @@ class PacManGame {
                 g.y = GHOST_STARTS[i].row;
                 g.row = GHOST_STARTS[i].row;
                 g.col = GHOST_STARTS[i].col;
-                g.dir = { r: -1, c: 0 };
+                g.dir = GHOST_INIT_DIRS[i];
                 g.scared = false;
                 g.eaten = false;
-                g.inHouse = true;
-                g.exiting = false;
-                g.exitTimer = 0;
+                g.respawning = false;
+                g.respawnTimer = 0;
             });
 
             this.powerMode = false;

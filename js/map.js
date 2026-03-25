@@ -4,9 +4,9 @@
 // P = pac-man start, G = ghost start
 
 const MAP_TEMPLATE = [
-    // 28 columns x 31 rows (classic Pac-Man inspired, center logo area)
+    // 28 columns x 31 rows — ghost house is now purely decorative (logo display)
     "1111111111111111111111111111",  // 0
-    "1000000000000110000000000001",  // 1
+    "1000000000000110000000000001",  // 1  ← ghosts spawn near corners
     "1011110111110110111110111101",  // 2
     "1311110111110110111110111131",  // 3
     "1011110111110110111110111101",  // 4
@@ -17,46 +17,52 @@ const MAP_TEMPLATE = [
     "1111110111110110111110111111",  // 9
     "2222210110000000000110122222",  // 10
     "2222210110011111100110122222",  // 11
-    "2222210110015555100110122222",  // 12 (door = 4 tiles wide)
-    "1111110000016666610001111111",  // 13
-    "2222220010016666610100222222",  // 14
-    "2222220010016666610100222222",  // 15
+    "2222210110011111100110122222",  // 12  (sealed — no door)
+    "1111110000016666610001111111",  // 13  logo area
+    "2222220010016666610100222222",  // 14  logo area
+    "2222220010016666610100222222",  // 15  logo area
     "1111110010011111100100111111",  // 16
-    "2222210110000000000110122222",  // 17
+    "2222210110000000000110122222",  // 17  ← Pac-Man spawns here
     "2222210110111111110110122222",  // 18
     "1111110110111111110110111111",  // 19
     "1000000000000110000000000001",  // 20
     "1011110111110110111110111101",  // 21
     "1011110111110110111110111101",  // 22
-    "1300110000000020000000110031",  // 23
+    "1300110000000000000000110031",  // 23
     "1110110110111111110110110111",  // 24
     "1110110110111111110110110111",  // 25
     "1000000110000110000110000001",  // 26
     "1011111111110110111111111101",  // 27
     "1011111111110110111111111101",  // 28
-    "1000000000000000000000000001",  // 29
+    "1000000000000000000000000001",  // 29  ← ghosts spawn near corners
     "1111111111111111111111111111",  // 30
 ];
 
-// Pac-Man start position
-const PACMAN_START = { row: 23, col: 13 };
+// Pac-Man starts at center of map
+const PACMAN_START = { row: 17, col: 13 };
 
-// Ghost start positions (inside ghost house)
+// Ghosts start at the 4 corners — NO ghost house needed!
 const GHOST_STARTS = [
-    { row: 13, col: 13 },  // Blinky (red) - center
-    { row: 14, col: 12 },  // Pinky (pink)
-    { row: 14, col: 14 },  // Inky (cyan)
-    { row: 15, col: 13 },  // Clyde (orange)
+    { row: 1,  col: 1  },  // Blinky (red)   — top-left
+    { row: 1,  col: 26 },  // Pinky (pink)   — top-right
+    { row: 29, col: 1  },  // Inky (cyan)    — bottom-left
+    { row: 29, col: 26 },  // Clyde (orange)  — bottom-right
 ];
 
-// Ghost exit waypoints: inside house → door → above door → scatter point
-const GHOST_DOOR = { row: 12, col: 13 };   // door line
-const GHOST_EXIT = { row: 10, col: 13 };    // safe open corridor above house
-const GHOST_SCATTER = [                       // scatter targets (4 corners)
-    { row: 1, col: 26 },   // Blinky → top-right
-    { row: 1, col: 1 },    // Pinky → top-left
-    { row: 29, col: 26 },  // Inky → bottom-right
-    { row: 29, col: 1 },   // Clyde → bottom-left
+// Initial directions: ghosts move inward toward center
+const GHOST_INIT_DIRS = [
+    { r: 0, c: 1  },  // Blinky → right
+    { r: 0, c: -1 },  // Pinky  → left
+    { r: 0, c: 1  },  // Inky   → right
+    { r: 0, c: -1 },  // Clyde  → left
+];
+
+// Scatter targets (opposite corners for patrol)
+const GHOST_SCATTER = [
+    { row: 1,  col: 26 },  // Blinky → top-right
+    { row: 1,  col: 1  },  // Pinky  → top-left
+    { row: 29, col: 26 },  // Inky   → bottom-right
+    { row: 29, col: 1  },  // Clyde  → bottom-left
 ];
 
 class GameMap {
@@ -107,18 +113,14 @@ class GameMap {
     isWall(row, col) {
         if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return true;
         const cell = this.grid[row][col];
-        return cell === 1 || cell === 4 || cell === 5;
-    }
-
-    isGhostHouse(row, col) {
-        if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return false;
-        return this.grid[row][col] === 4 || this.grid[row][col] === 5 || this.grid[row][col] === 6;
+        // Walls (1) and logo area (6) are impassable
+        return cell === 1 || cell === 6;
     }
 
     canGhostPass(row, col) {
         if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return false;
         const cell = this.grid[row][col];
-        // Normal ghosts can only walk on paths (0,2,3), NOT through door(5) or house(4,6)
+        // Ghosts walk on paths (0,2,3) only — walls(1) and logo(6) blocked
         return cell === 0 || cell === 2 || cell === 3;
     }
 
@@ -168,10 +170,6 @@ class GameMap {
                         ctx.arc(x + tileSize / 2, y + tileSize / 2, 5, 0, Math.PI * 2);
                         ctx.fill();
                     }
-                } else if (cell === 5) {
-                    // Ghost door
-                    ctx.fillStyle = '#ffaacc';
-                    ctx.fillRect(x, y + tileSize / 2 - 2, tileSize, 4);
                 }
             }
         }
