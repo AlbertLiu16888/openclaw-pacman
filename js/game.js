@@ -144,6 +144,7 @@ class PacManGame {
     stop() {
         this.running = false;
         if (this._raf) cancelAnimationFrame(this._raf);
+        if (typeof SFX !== 'undefined') SFX.stopScaredSound();
     }
 
     setDirection(dr, dc) {
@@ -224,11 +225,13 @@ class PacManGame {
                 this.score += CONFIG.score.dot;
                 this.dotsEaten++;
                 this.totalDotsEaten++;
+                if (typeof SFX !== 'undefined') SFX.eatDot();
                 if (this.onScoreChange) this.onScoreChange(this.score);
             } else if (eaten === 'power') {
                 this.score += CONFIG.score.powerDot;
                 this.dotsEaten++;
                 this.totalDotsEaten++;
+                if (typeof SFX !== 'undefined') SFX.eatPowerDot();
                 this._activatePower();
                 if (this.onScoreChange) this.onScoreChange(this.score);
             }
@@ -251,6 +254,7 @@ class PacManGame {
             if (tile.row === this.fruitPos.row && tile.col === this.fruitPos.col) {
                 this.score += CONFIG.score.fruit;
                 this.fruitActive = false;
+                if (typeof SFX !== 'undefined') SFX.eatFruit();
                 if (this.onScoreChange) this.onScoreChange(this.score);
             }
         }
@@ -263,6 +267,7 @@ class PacManGame {
         this.ghosts.forEach(g => {
             if (!g.eaten && !g.respawning) g.scared = true;
         });
+        if (typeof SFX !== 'undefined') SFX.startScaredSound();
     }
 
     _updatePower(dt) {
@@ -271,6 +276,7 @@ class PacManGame {
         if (this.powerTimer <= 0) {
             this.powerMode = false;
             this.ghosts.forEach(g => g.scared = false);
+            if (typeof SFX !== 'undefined') SFX.stopScaredSound();
         }
     }
 
@@ -455,9 +461,14 @@ class PacManGame {
                     this.score += points;
                     this.ghostsEaten++;
                     this.totalGhostsEaten++;
+                    if (typeof SFX !== 'undefined') SFX.eatGhost(this.ghostEatCombo);
                     if (this.onScoreChange) this.onScoreChange(this.score);
                 } else {
                     // Pac-Man dies
+                    if (typeof SFX !== 'undefined') {
+                        SFX.stopScaredSound();
+                        SFX.death();
+                    }
                     this._pacDeath();
                     return;
                 }
@@ -506,6 +517,10 @@ class PacManGame {
 
     _levelClear() {
         this.paused = true;
+        if (typeof SFX !== 'undefined') {
+            SFX.stopScaredSound();
+            SFX.levelClear();
+        }
         if (this.onLevelClear) this.onLevelClear(this.level);
 
         // Check if game complete
@@ -525,6 +540,7 @@ class PacManGame {
 
     _gameComplete() {
         this.running = false;
+        if (typeof SFX !== 'undefined') SFX.victory();
         if (this.onGameEnd) {
             this.onGameEnd({
                 score: this.score,
@@ -539,6 +555,7 @@ class PacManGame {
 
     _gameOver() {
         this.running = false;
+        if (typeof SFX !== 'undefined') SFX.gameOver();
         if (this.onGameEnd) {
             this.onGameEnd({
                 score: this.score,

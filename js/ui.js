@@ -99,6 +99,7 @@
     btnStart.addEventListener('click', () => {
         playerName = nameInput.value.trim();
         if (!playerName) return;
+        if (typeof SFX !== 'undefined') SFX.unlock();
         startGame();
     });
 
@@ -174,10 +175,15 @@
         function tick() {
             if (count > 0) {
                 overlay.innerHTML = `${count}<div class="sub">方向鍵 / 滑動控制</div>`;
+                if (typeof SFX !== 'undefined') SFX.countdownBeep(false);
                 count--;
                 setTimeout(tick, 800);
             } else {
                 overlay.textContent = 'GO!';
+                if (typeof SFX !== 'undefined') {
+                    SFX.countdownBeep(true);
+                    SFX.gameStart();
+                }
                 setTimeout(() => {
                     overlay.remove();
                     callback();
@@ -196,15 +202,19 @@
     }
 
     // --- Game Controls ---
-    // D-Pad buttons
-    $('btn-up').addEventListener('touchstart', e => { e.preventDefault(); game.setDirection(-1, 0); });
-    $('btn-down').addEventListener('touchstart', e => { e.preventDefault(); game.setDirection(1, 0); });
-    $('btn-left').addEventListener('touchstart', e => { e.preventDefault(); game.setDirection(0, -1); });
-    $('btn-right').addEventListener('touchstart', e => { e.preventDefault(); game.setDirection(0, 1); });
-    $('btn-up').addEventListener('click', () => game.setDirection(-1, 0));
-    $('btn-down').addEventListener('click', () => game.setDirection(1, 0));
-    $('btn-left').addEventListener('click', () => game.setDirection(0, -1));
-    $('btn-right').addEventListener('click', () => game.setDirection(0, 1));
+    // D-Pad buttons with sound & vibration
+    function dirInput(dr, dc) {
+        game.setDirection(dr, dc);
+        if (typeof SFX !== 'undefined') SFX.directionClick();
+    }
+    $('btn-up').addEventListener('touchstart', e => { e.preventDefault(); dirInput(-1, 0); });
+    $('btn-down').addEventListener('touchstart', e => { e.preventDefault(); dirInput(1, 0); });
+    $('btn-left').addEventListener('touchstart', e => { e.preventDefault(); dirInput(0, -1); });
+    $('btn-right').addEventListener('touchstart', e => { e.preventDefault(); dirInput(0, 1); });
+    $('btn-up').addEventListener('click', () => dirInput(-1, 0));
+    $('btn-down').addEventListener('click', () => dirInput(1, 0));
+    $('btn-left').addEventListener('click', () => dirInput(0, -1));
+    $('btn-right').addEventListener('click', () => dirInput(0, 1));
 
     // Keyboard
     document.addEventListener('keydown', e => {
@@ -213,25 +223,25 @@
             case 'w':
             case 'W':
                 e.preventDefault();
-                game.setDirection(-1, 0);
+                dirInput(-1, 0);
                 break;
             case 'ArrowDown':
             case 's':
             case 'S':
                 e.preventDefault();
-                game.setDirection(1, 0);
+                dirInput(1, 0);
                 break;
             case 'ArrowLeft':
             case 'a':
             case 'A':
                 e.preventDefault();
-                game.setDirection(0, -1);
+                dirInput(0, -1);
                 break;
             case 'ArrowRight':
             case 'd':
             case 'D':
                 e.preventDefault();
-                game.setDirection(0, 1);
+                dirInput(0, 1);
                 break;
         }
     });
@@ -257,6 +267,20 @@
             game.setDirection(dy > 0 ? 1 : -1, 0);
         }
     }, { passive: true });
+
+    // Sound & Vibration toggles
+    $('btn-sound').addEventListener('click', () => {
+        if (typeof SFX === 'undefined') return;
+        const on = SFX.toggle();
+        $('btn-sound').textContent = on ? '🔊' : '🔇';
+        $('btn-sound').classList.toggle('off', !on);
+    });
+    $('btn-vibrate').addEventListener('click', () => {
+        if (typeof SFX === 'undefined') return;
+        const on = SFX.toggleVibration();
+        $('btn-vibrate').textContent = on ? '📳' : '📴';
+        $('btn-vibrate').classList.toggle('off', !on);
+    });
 
     // Resize
     window.addEventListener('resize', () => {
