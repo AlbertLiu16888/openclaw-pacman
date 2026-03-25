@@ -160,43 +160,54 @@ html, body {
 /* === Lives === */
 #lives-display {
     position: fixed;
-    bottom: 160px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 165px;
+    left: 6px;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     z-index: 20;
+    opacity: 0.6;
 }
 .life-icon {
-    width: 20px; height: 20px;
+    width: 16px; height: 16px;
     background: #ffcc00;
     border-radius: 50%;
     clip-path: polygon(100% 50%, 75% 0%, 0% 0%, 0% 100%, 75% 100%);
+}
+@media (hover: hover) and (pointer: fine) {
+    #lives-display {
+        bottom: 20px;
+        left: 10px;
+        flex-direction: row;
+        gap: 6px;
+        opacity: 0.8;
+    }
+    .life-icon { width: 18px; height: 18px; }
 }
 
 /* === Mobile D-Pad === */
 #mobile-controls {
     position: fixed;
-    bottom: 16px;
+    bottom: 8px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     z-index: 25;
 }
 .d-row {
     display: flex;
-    gap: 4px;
+    gap: 2px;
 }
 .d-btn {
-    width: 60px; height: 60px;
-    border: 2px solid rgba(255,204,0,0.4);
-    border-radius: 12px;
-    background: rgba(255,204,0,0.08);
-    color: rgba(255,204,0,0.8);
-    font-size: 1.5rem;
+    width: 52px; height: 52px;
+    border: 2px solid rgba(255,204,0,0.35);
+    border-radius: 10px;
+    background: rgba(255,204,0,0.06);
+    color: rgba(255,204,0,0.7);
+    font-size: 1.3rem;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     display: flex;
@@ -216,7 +227,6 @@ html, body {
 /* Desktop: hide D-Pad */
 @media (hover: hover) and (pointer: fine) {
     #mobile-controls { display: none; }
-    #lives-display { bottom: 20px; }
 }
 
 /* === Result Screen === */

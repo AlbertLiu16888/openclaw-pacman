@@ -108,14 +108,17 @@ class PacManGame {
     }
 
     resize() {
-        const maxH = window.innerHeight - 240; // room for HUD + controls
-        const maxW = window.innerWidth - 20;
+        const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
+        const hudHeight = 40;
+        const controlsHeight = isMobile ? 180 : 20;
+        const maxH = window.innerHeight - hudHeight - controlsHeight - 10;
+        const maxW = window.innerWidth - 10;
         const mapW = this.map.cols;
         const mapH = this.map.rows;
 
         let tileSize = Math.floor(Math.min(maxW / mapW, maxH / mapH));
-        tileSize = Math.max(tileSize, 8); // minimum
-        tileSize = Math.min(tileSize, 24); // maximum
+        tileSize = Math.max(tileSize, 10); // minimum
+        tileSize = Math.min(tileSize, 28); // maximum (bigger on desktop)
 
         this.tileSize = tileSize;
         this.canvas.width = mapW * tileSize;
