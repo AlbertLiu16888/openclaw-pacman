@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>OpenClaw Pac-Man</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 開始畫面 -->
+    <div id="screen-start" class="screen active">
+        <div class="start-container">
+            <h1 class="game-title">OpenClaw Pac-Man</h1>
+            <div class="pacman-icon">
+                <div class="pac-anim"></div>
+                <div class="dot-trail">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="player-name">輸入你的名稱</label>
+                <input type="text" id="player-name" maxlength="12" placeholder="玩家名稱" autocomplete="off">
+            </div>
+            <button id="btn-start" class="btn-primary" disabled>開始遊戲</button>
+            <button id="btn-leaderboard" class="btn-secondary">排行榜 TOP 10</button>
+        </div>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div id="screen-game" class="screen">
+        <div id="game-hud">
+            <div class="hud-left">
+                <span id="hud-player"></span>
+            </div>
+            <div class="hud-center">
+                <span id="hud-level">Level 1</span>
+            </div>
+            <div class="hud-right">
+                <span id="hud-score">0</span>
+            </div>
+        </div>
+        <div id="game-area">
+            <canvas id="game-canvas"></canvas>
+        </div>
+        <div id="lives-display"></div>
+        <!-- 手機虛擬方向鍵 -->
+        <div id="mobile-controls">
+            <button class="d-btn" id="btn-up" aria-label="上">▲</button>
+            <div class="d-row">
+                <button class="d-btn" id="btn-left" aria-label="左">◀</button>
+                <button class="d-btn d-center" disabled></button>
+                <button class="d-btn" id="btn-right" aria-label="右">▶</button>
+            </div>
+            <button class="d-btn" id="btn-down" aria-label="下">▼</button>
+        </div>
+    </div>
+
+    <!-- 結算畫面 -->
+    <div id="screen-result" class="screen">
+        <div class="result-container">
+            <div id="result-content">
+                <h2 id="result-title"></h2>
+                <div id="result-stats">
+                    <div class="stat"><span class="stat-label">分數</span><span id="result-score" class="stat-value">0</span></div>
+                    <div class="stat"><span class="stat-label">最高關卡</span><span id="result-level" class="stat-value">1</span></div>
+                    <div class="stat"><span class="stat-label">吃掉豆子</span><span id="result-dots" class="stat-value">0</span></div>
+                    <div class="stat"><span class="stat-label">吃掉鬼</span><span id="result-ghosts" class="stat-value">0</span></div>
+                </div>
+                <div id="secret-message-area" class="hidden"></div>
+            </div>
+            <button id="btn-retry" class="btn-primary">再玩一次</button>
+            <button id="btn-home" class="btn-secondary">回首頁</button>
+        </div>
+    </div>
+
+    <!-- 排行榜畫面 -->
+    <div id="screen-leaderboard" class="screen">
+        <div class="leaderboard-container">
+            <h2>排行榜 TOP 10</h2>
+            <div id="leaderboard-list"><p class="loading">載入中...</p></div>
+            <button id="btn-back" class="btn-secondary">返回</button>
+        </div>
+    </div>
+
+    <!-- 管理後台 (URL#admin) -->
+    <div id="screen-admin" class="screen">
+        <div class="admin-container">
+            <h2>管理後台</h2>
+            <div class="admin-group">
+                <label>破關訊息（玩家需記下的文字）</label>
+                <input type="text" id="admin-secret" placeholder="openthedoor">
+            </div>
+            <div class="admin-group">
+                <label>過關分數門檻</label>
+                <input type="number" id="admin-threshold" placeholder="5000">
+            </div>
+            <div class="admin-group">
+                <label>Google Apps Script Web App URL（排行榜）</label>
+                <input type="text" id="admin-api-url" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+            <div class="admin-group">
+                <label>公司 Logo 圖片網址（地圖中央顯示）</label>
+                <input type="text" id="admin-logo-url" placeholder="https://example.com/logo.png">
+                <p class="admin-hint">建議尺寸：120x120px，PNG 透明背景最佳</p>
+            </div>
+            <div class="admin-group">
+                <label>或直接上傳 Logo 圖檔</label>
+                <input type="file" id="admin-logo-file" accept="image/*">
+                <div id="logo-preview"></div>
+            </div>
+            <div class="admin-actions">
+                <button id="btn-admin-save" class="btn-primary">儲存設定</button>
+                <button id="btn-admin-back" class="btn-secondary">返回</button>
+            </div>
+            <p id="admin-status"></p>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
