@@ -306,24 +306,27 @@ class PacManGame {
                 continue;
             }
 
-            // Eaten ghost returning to house
+            // Eaten ghost returning to house (two-phase: go to door, then go inside)
             if (ghost.eaten) {
-                const target = GHOST_EXIT;
-                const dx = target.col - ghost.x;
-                const dy = target.row - ghost.y;
+                const doorTarget = GHOST_DOOR;
+                const dx = doorTarget.col - ghost.x;
+                const dy = doorTarget.row - ghost.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+                const spd = CONFIG.ghostSpeed * 2.5;
+
                 if (dist < 0.5) {
+                    // Reached the door, teleport inside and reset
                     ghost.eaten = false;
                     ghost.scared = false;
                     ghost.inHouse = true;
-                    ghost.exitDelay = 1000;
+                    ghost.exitDelay = 1500;
                     ghost.exitTimer = 0;
                     ghost.x = GHOST_STARTS[0].col;
                     ghost.y = GHOST_STARTS[0].row;
+                } else {
+                    ghost.x += (dx / dist) * spd * dt;
+                    ghost.y += (dy / dist) * spd * dt;
                 }
-                const spd = CONFIG.ghostSpeed * 2.5;
-                ghost.x += (dx / dist) * spd * dt;
-                ghost.y += (dy / dist) * spd * dt;
                 continue;
             }
 

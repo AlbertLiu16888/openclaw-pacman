@@ -49,8 +49,11 @@ const GHOST_STARTS = [
     { row: 15, col: 13 },  // Clyde (orange)
 ];
 
-// Ghost exit target (door)
-const GHOST_EXIT = { row: 12, col: 13 };
+// Ghost exit target (above the door, in open path)
+const GHOST_EXIT = { row: 11, col: 13 };
+
+// Ghost door position (for eaten ghosts returning)
+const GHOST_DOOR = { row: 12, col: 13 };
 
 class GameMap {
     constructor() {
@@ -111,7 +114,8 @@ class GameMap {
     canGhostPass(row, col) {
         if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return false;
         const cell = this.grid[row][col];
-        return cell !== 1; // ghosts can pass through door(5), house(4,6), paths(0,2,3)
+        // Normal ghosts can only walk on paths (0,2,3), NOT through door(5) or house(4,6)
+        return cell === 0 || cell === 2 || cell === 3;
     }
 
     eatDot(row, col) {
