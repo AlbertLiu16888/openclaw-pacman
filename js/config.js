@@ -1,10 +1,17 @@
 // === Game Configuration ===
+// 優先讀取遠端 (Google Sheets Config)，fallback 到 localStorage
 const CONFIG = {
-    // 管理設定（可透過 #admin 後台調整）
+    _remote: {},       // 從 API 載入的遠端設定
+    _loaded: false,    // 遠端設定是否已載入
+
     get secretMessage() {
-        return localStorage.getItem('pac_secret') || 'openthedoor';
+        return this._remote.secretMessage
+            || localStorage.getItem('pac_secret')
+            || 'openthedoor';
     },
     get passThreshold() {
+        const remote = parseInt(this._remote.passThreshold);
+        if (!isNaN(remote) && remote > 0) return remote;
         return parseInt(localStorage.getItem('pac_threshold')) || 3000;
     },
     get apiUrl() {
@@ -17,38 +24,60 @@ const CONFIG = {
         return localStorage.getItem('pac_logo_data') || '';
     },
 
-    // 取得 Logo (優先使用上傳的 base64，其次用 URL)
     getLogoSrc() {
         return this.logoData || this.logoUrl || '';
     },
 
+    // 從 Google Sheets Config 分頁載入遠端設定
+    async loadRemoteConfig() {
+        const url = this.apiUrl;
+        if (!url) return;
+        try {
+            const res = await fetch(`${url}?action=getConfig`);
+            const data = await res.json();
+            if (data && typeof data === 'object' && !data.error) {
+                this._remote = data;
+                this._loaded = true;
+                console.log('Remote config loaded:', data);
+            }
+        } catch (e) {
+            console.warn('Failed to load remote config, using local:', e);
+        }
+    },
+
+    // 儲存設定到遠端 Google Sheets
+    async saveRemoteConfig(key, value) {
+        const url = this.apiUrl;
+        if (!url) return;
+        try {
+            await fetch(url, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'setConfig', key, value }),
+            });
+            // 也更新本地快取
+            this._remote[key] = value;
+        } catch (e) {
+            console.warn('Failed to save remote config:', e);
+        }
+    },
+
     // 格子大小 (px)
     tileSize: 20,
-
-    // Pac-Man 速度 (tiles per second)
     pacSpeed: 5,
-
-    // 鬼速度
     ghostSpeed: 3.8,
     ghostScaredSpeed: 2.5,
 
-    // 分數
     score: {
         dot: 10,
         powerDot: 50,
-        ghost: 200,     // 第一隻鬼，連續加倍
+        ghost: 200,
         fruit: 500,
     },
 
-    // 大力丸效果時間 (ms)
     powerDuration: 7000,
-
-    // 每關加速
     levelSpeedBonus: 0.3,
-
-    // 初始生命
     lives: 3,
-
-    // 過關條件：吃完所有豆子 + 存活到第3關即為破關
     clearLevel: 3,
 };

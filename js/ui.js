@@ -13,6 +13,9 @@
     const game = new PacManGame(canvas);
     let playerName = '';
 
+    // 開機即載入遠端設定（破關訊息、過關分數等）
+    CONFIG.loadRemoteConfig();
+
     // --- Screen Navigation ---
     function showScreen(name) {
         Object.values(screens).forEach(s => s.classList.remove('active'));
@@ -33,16 +36,17 @@
         }
     }
 
-    function checkAdminMode() {
+    async function checkAdminMode() {
         if (window.location.hash === '#admin') {
             showScreen('admin');
+            // 先載入遠端設定再填入表單
+            await CONFIG.loadRemoteConfig();
             $('admin-secret').value = CONFIG.secretMessage;
             $('admin-threshold').value = CONFIG.passThreshold;
             $('admin-api-url').value = CONFIG.apiUrl;
             $('admin-logo-url').value = CONFIG.logoUrl;
             updateLogoPreview();
 
-            // Show URL field if URL exists but no uploaded file
             if (CONFIG.logoUrl && !CONFIG.logoData) {
                 $('toggle-logo-url').checked = true;
                 $('admin-logo-url').style.display = 'block';
@@ -111,7 +115,11 @@
     });
 
     // --- Game ---
-    function startGame() {
+    async function startGame() {
+        // 確保遠端設定已載入（破關訊息等）
+        if (!CONFIG._loaded) {
+            await CONFIG.loadRemoteConfig();
+        }
         showScreen('game');
         $('hud-player').textContent = playerName;
         $('hud-score').textContent = '0';
@@ -394,20 +402,34 @@
     $('btn-back').addEventListener('click', () => showScreen('start'));
 
     // --- Admin ---
-    $('btn-admin-save').addEventListener('click', () => {
-        localStorage.setItem('pac_secret', $('admin-secret').value);
-        localStorage.setItem('pac_threshold', $('admin-threshold').value);
-        localStorage.setItem('pac_api_url', $('admin-api-url').value);
-        localStorage.setItem('pac_logo_url', $('admin-logo-url').value);
+    $('btn-admin-save').addEventListener('click', async () => {
+        const secret = $('admin-secret').value;
+        const threshold = $('admin-threshold').value;
+        const apiUrl = $('admin-api-url').value;
+        const logoUrl = $('admin-logo-url').value;
 
-        // Save uploaded logo base64
+        // 存到 localStorage（本機備份）
+        localStorage.setItem('pac_secret', secret);
+        localStorage.setItem('pac_threshold', threshold);
+        localStorage.setItem('pac_api_url', apiUrl);
+        localStorage.setItem('pac_logo_url', logoUrl);
+
+        // 存上傳的 logo base64
         const base64 = $('admin-logo-file').dataset.base64;
         if (base64) {
             localStorage.setItem('pac_logo_data', base64);
         }
 
-        $('admin-status').textContent = '設定已儲存！';
-        setTimeout(() => $('admin-status').textContent = '', 2000);
+        // 同步到 Google Sheets Config（讓所有玩家都能讀到）
+        $('admin-status').textContent = '儲存中...';
+        try {
+            await CONFIG.saveRemoteConfig('secretMessage', secret);
+            await CONFIG.saveRemoteConfig('passThreshold', threshold);
+            $('admin-status').textContent = '✅ 設定已儲存（本機 + 雲端）！';
+        } catch (e) {
+            $('admin-status').textContent = '⚠️ 本機已存，雲端同步失敗';
+        }
+        setTimeout(() => $('admin-status').textContent = '', 3000);
     });
 
     $('btn-admin-back').addEventListener('click', () => {
