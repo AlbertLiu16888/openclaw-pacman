@@ -20,6 +20,19 @@
     }
 
     // --- Admin Mode ---
+    function updateLogoPreview() {
+        const src = CONFIG.getLogoSrc();
+        const preview = $('logo-preview');
+        const deleteBtn = $('btn-logo-delete');
+        if (src) {
+            preview.innerHTML = `<img src="${src}" alt="Logo Preview">`;
+            deleteBtn.style.display = 'block';
+        } else {
+            preview.innerHTML = '<span class="no-logo">🖼️</span>';
+            deleteBtn.style.display = 'none';
+        }
+    }
+
     function checkAdminMode() {
         if (window.location.hash === '#admin') {
             showScreen('admin');
@@ -27,10 +40,12 @@
             $('admin-threshold').value = CONFIG.passThreshold;
             $('admin-api-url').value = CONFIG.apiUrl;
             $('admin-logo-url').value = CONFIG.logoUrl;
-            // Show current logo preview
-            const src = CONFIG.getLogoSrc();
-            if (src) {
-                $('logo-preview').innerHTML = `<img src="${src}" alt="Logo Preview">`;
+            updateLogoPreview();
+
+            // Show URL field if URL exists but no uploaded file
+            if (CONFIG.logoUrl && !CONFIG.logoData) {
+                $('toggle-logo-url').checked = true;
+                $('admin-logo-url').style.display = 'block';
             }
         }
     }
@@ -44,11 +59,29 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
             const dataUrl = ev.target.result;
-            $('logo-preview').innerHTML = `<img src="${dataUrl}" alt="Logo Preview">`;
-            // Store temporarily, save on button click
             $('admin-logo-file').dataset.base64 = dataUrl;
+            // Instant preview
+            $('logo-preview').innerHTML = `<img src="${dataUrl}" alt="Logo Preview">`;
+            $('btn-logo-delete').style.display = 'block';
         };
         reader.readAsDataURL(file);
+    });
+
+    // --- Delete Logo ---
+    $('btn-logo-delete').addEventListener('click', () => {
+        localStorage.removeItem('pac_logo_data');
+        localStorage.removeItem('pac_logo_url');
+        $('admin-logo-file').value = '';
+        $('admin-logo-file').dataset.base64 = '';
+        $('admin-logo-url').value = '';
+        updateLogoPreview();
+        $('admin-status').textContent = 'Logo 已刪除！';
+        setTimeout(() => $('admin-status').textContent = '', 2000);
+    });
+
+    // --- Toggle URL input ---
+    $('toggle-logo-url').addEventListener('change', (e) => {
+        $('admin-logo-url').style.display = e.target.checked ? 'block' : 'none';
     });
 
     // --- Start Screen ---
