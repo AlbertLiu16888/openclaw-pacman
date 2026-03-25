@@ -343,7 +343,7 @@
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'addScore', name, score }),
+                body: JSON.stringify({ action: 'addScore', game: 'pacman', name, score }),
             });
         } catch (e) {
             console.warn('Failed to submit score:', e);
@@ -359,7 +359,7 @@
 
         if (url) {
             try {
-                const res = await fetch(`${url}?action=getScores`);
+                const res = await fetch(`${url}?action=getScores&game=pacman`);
                 const data = await res.json();
                 if (Array.isArray(data)) scores = data;
             } catch (e) {

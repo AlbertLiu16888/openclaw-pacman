@@ -28,12 +28,15 @@ const CONFIG = {
         return this.logoData || this.logoUrl || '';
     },
 
+    // 遊戲識別碼（用於 API 分流）
+    gameId: 'pacman',
+
     // 從 Google Sheets Config 分頁載入遠端設定
     async loadRemoteConfig() {
         const url = this.apiUrl;
         if (!url) return;
         try {
-            const res = await fetch(`${url}?action=getConfig`);
+            const res = await fetch(`${url}?action=getConfig&game=${this.gameId}`);
             const data = await res.json();
             if (data && typeof data === 'object' && !data.error) {
                 this._remote = data;
@@ -54,9 +57,8 @@ const CONFIG = {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'setConfig', key, value }),
+                body: JSON.stringify({ action: 'setConfig', game: this.gameId, key, value }),
             });
-            // 也更新本地快取
             this._remote[key] = value;
         } catch (e) {
             console.warn('Failed to save remote config:', e);
