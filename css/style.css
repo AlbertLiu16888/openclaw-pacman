@@ -453,29 +453,38 @@ html, body {
 /* === Sound & Vibration Toggles === */
 #game-toggles {
     position: fixed;
-    top: 38px;
-    right: 8px;
+    bottom: 165px;
+    right: 6px;
     display: flex;
-    gap: 4px;
+    flex-direction: column;
+    gap: 3px;
     z-index: 25;
+    opacity: 0.35;
+    transition: opacity 0.3s;
 }
+#game-toggles:hover,
+#game-toggles:active { opacity: 0.9; }
 .toggle-btn {
-    width: 36px; height: 36px;
-    border: 1px solid #333;
-    border-radius: 8px;
-    background: rgba(0,0,0,0.7);
-    font-size: 1rem;
+    width: 26px; height: 26px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.5);
+    font-size: 0.65rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
     -webkit-tap-highlight-color: transparent;
+    padding: 0;
 }
 .toggle-btn:active { transform: scale(0.9); }
 .toggle-btn.off {
-    opacity: 0.4;
+    opacity: 0.5;
     border-color: #555;
+}
+@media (hover: hover) and (pointer: fine) {
+    #game-toggles { bottom: 20px; right: 10px; }
 }
 
 /* === Swipe hint === */
