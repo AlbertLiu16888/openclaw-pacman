@@ -21,8 +21,9 @@
 
 // === Game name → Sheet tab mapping ===
 var GAME_SHEETS = {
-  rhythm:  { scores: 'Rhythm',       config: 'Rhythm_Config' },
-  pacman:  { scores: 'PacMan',       config: 'PacMan_Config' },
+  rhythm:    { scores: 'Rhythm',       config: 'Rhythm_Config' },
+  pacman:    { scores: 'PacMan',       config: 'PacMan_Config' },
+  dicechef:  { scores: 'DiceChef',     config: 'DiceChef_Config' },
 };
 
 var DEFAULT_CONFIGS = {
@@ -35,6 +36,9 @@ var DEFAULT_CONFIGS = {
     ['key', 'value'],
     ['secretMessage', 'openthedoor'],
     ['passThreshold', '3000'],
+  ],
+  dicechef: [
+    ['key', 'value'],
   ],
 };
 
