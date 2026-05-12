@@ -4,8 +4,8 @@
     {
       "name": "pacman-game",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", "/Users/mac/claude projects/openclaw-pacman", "-p", "8082", "-c-1"],
-      "port": 8082
+      "runtimeArgs": ["http-server", ".", "-p", "8095", "-c-1"],
+      "port": 8095
     }
   ]
 }
