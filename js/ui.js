@@ -574,18 +574,19 @@
             $('battle-result-compare').style.display = 'none';
 
             $('result-score').textContent = results.score.toLocaleString();
+            $('result-threshold').textContent = CONFIG.passThreshold.toLocaleString();
             $('result-level').textContent = results.level;
             $('result-dots').textContent = results.dotsEaten;
             $('result-ghosts').textContent = results.ghostsEaten;
 
             if (results.passed) {
-                $('result-title').textContent = '🎉 挑戰成功！';
+                $('result-title').textContent = '🎉 二次挑戰已解鎖！';
                 $('result-title').style.color = '#ffcc00';
                 showSecretMessages(playerName);
             } else {
-                $('result-title').textContent = 'GAME OVER';
-                $('result-title').style.color = '#ff4444';
-                $('secret-message-area').classList.add('hidden');
+                $('result-title').textContent = '挑戰結束';
+                $('result-title').style.color = '#aaa';
+                showFailMessages(results);
             }
 
             submitScore(playerName, results.score);
@@ -598,16 +599,35 @@
         area.innerHTML = '';
 
         const messages = [
-            `恭喜「${name}」挑戰成功！`,
-            '請記下接下來的文字訊息',
-            `輸入破關訊息「${CONFIG.secretMessage}」獲得積分`,
+            `恭喜「${name}」通過二次挑戰！`,
+            '你已取得體力任務失敗後的補挑戰通關資格',
+            '請向關主確認最終成績並返回主關卡',
         ];
 
         messages.forEach((msg, i) => {
             const line = document.createElement('div');
             line.className = 'fade-line';
             line.textContent = msg;
-            line.style.animationDelay = `${i * 1.8 + 0.5}s`;
+            line.style.animationDelay = `${i * 1.5 + 0.5}s`;
+            area.appendChild(line);
+        });
+    }
+
+    function showFailMessages(results) {
+        const area = $('secret-message-area');
+        area.classList.remove('hidden');
+        area.innerHTML = '';
+        const shortfall = Math.max(0, CONFIG.passThreshold - results.score).toLocaleString();
+        const messages = [
+            '本次未達二次挑戰門檻',
+            `還差 ${shortfall} 分，補足體力後再挑戰。`,
+            '挑戰重點：吃光豆子、善用能量丸',
+        ];
+        messages.forEach((msg, i) => {
+            const line = document.createElement('div');
+            line.className = 'fade-line';
+            line.textContent = msg;
+            line.style.animationDelay = `${i * 1.5 + 0.2}s`;
             area.appendChild(line);
         });
     }
